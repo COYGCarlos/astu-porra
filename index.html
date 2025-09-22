@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reglamento Interactivo de la AstuPorra</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Monday Night Modern -->
+    <!-- Application Structure Plan: He diseñado una aplicación de una sola página con una estructura temática para maximizar la usabilidad. Comienza con las reglas clave presentadas en tarjetas visuales para una rápida comprensión. Sigue con una guía paso a paso del nuevo proceso de elección. El núcleo es el "Explorador de Comodines", una sección interactiva que permite a los usuarios filtrar y buscar instantáneamente entre los 50 comodines por tipo, momento de uso y orientación. Esta estructura abandona el formato lineal del PDF en favor de un dashboard funcional, mucho más útil para consultas rápidas durante un evento. -->
+    <!-- Visualization & Content Choices: Las reglas se presentan como tarjetas con iconos (HTML/CSS) para una asimilación visual rápida (Meta: Informar). El proceso de elección es un flujo visual numerado, más claro que un párrafo (Meta: Organizar). La información de los comodines se transforma de una lista estática a una cuadrícula de tarjetas dinámicas (Meta: Organizar, Informar). La interacción principal son los filtros y la búsqueda, permitiendo a los usuarios encontrar información específica al instante (Interacción: Filtros de botones y búsqueda de texto). Se usa Vanilla JS para toda la lógica, sin necesidad de librerías de gráficos ya que no hay datos cuantitativos. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #111827;
+            color: #e5e7eb;
+        }
+        h1, h2, h3 {
+            font-family: 'Oswald', sans-serif;
+            text-transform: uppercase;
+        }
+        .card {
+            background-color: #1f2937;
+            border-radius: 0.75rem;
+            border: 1px solid #374151;
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
+        }
+        .favor-card { border-left: 4px solid #10b981; }
+        .contra-card { border-left: 4px solid #ef4444; }
+        .favor-header { background-color: rgba(16, 185, 129, 0.1); color: #10b981; }
+        .contra-header { background-color: rgba(239, 68, 68, 0.1); color: #ef4444; }
+        .tag {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .tag-uso { background-color: #374151; color: #d1d5db; }
+        .tag-orientacion { background-color: #4b5563; color: #d1d5db; }
+        .filter-btn {
+            transition: all 0.2s;
+            border: 1px solid #4b5563;
+        }
+        .filter-btn.active {
+            color: #111827;
+        }
+        .filter-btn-favor.active { background-color: #10b981; border-color: #10b981;}
+        .filter-btn-contra.active { background-color: #ef4444; border-color: #ef4444; }
+        #searchInput {
+            background-color: #374151;
+            border: 1px solid #4b5563;
+        }
+    </style>
+</head>
+<body class="antialiased">
+    <div class="container mx-auto p-4 md:p-8 max-w-7xl">
+
+        <header class="text-center mb-12">
+            <h1 class="text-4xl md:text-6xl font-bold tracking-wider text-white">AstuPorra</h1>
+            <p class="text-xl md:text-2xl text-gray-400 mt-2">Reglamento y Explorador de Comodines</p>
+        </header>
+
+        <main>
+            <section id="reglas" class="mb-16">
+                <h2 class="text-3xl font-bold mb-8 text-center border-b-2 border-gray-700 pb-4">Reglas Fundamentales</h2>
+                <div class="grid md:grid-cols-3 gap-6">
+                    <div class="card p-6">
+                        <div class="flex items-center mb-4">
+                            <span class="text-3xl mr-4">🛡️</span>
+                            <h3 class="text-2xl font-bold">Uso Divisional</h3>
+                        </div>
+                        <p class="text-gray-300">La regla más importante: los comodines <span class="font-bold text-yellow-400">SÓLO</span> se pueden usar entre participantes de la misma división. ¡La batalla es interna!</p>
+                    </div>
+                    <div class="card p-6">
+                        <div class="flex items-center mb-4">
+                            <span class="text-3xl mr-4">🗓️</span>
+                            <h3 class="text-2xl font-bold">Frecuencia y Eventos</h3>
+                        </div>
+                        <p class="text-gray-300">Se permite usar <span class="font-bold text-yellow-400">un comodín por PPV/PLE</span>. En eventos de dos noches como WrestleMania, solo se podrá usar un comodín en total.</p>
+                    </div>
+                    <div class="card p-6">
+                        <div class="flex items-center mb-4">
+                            <span class="text-3xl mr-4">🎯</span>
+                            <h3 class="text-2xl font-bold">Límite de Ataques</h3>
+                        </div>
+                        <p class="text-gray-300">Un oponente solo puede ser atacado <span class="font-bold text-yellow-400">dos veces por evento</span>. Un tercer intento de ataque será denegado para evitar el acoso.</p>
+                    </div>
+                </div>
+            </section>
+            
+            <section id="eleccion" class="mb-16">
+                <h2 class="text-3xl font-bold mb-8 text-center border-b-2 border-gray-700 pb-4">Proceso de Elección de Comodines</h2>
+                <div class="card p-8">
+                    <p class="text-center text-gray-300 mb-8">Para asegurar un proceso justo y organizado, la elección de comodines se hará por turnos basados en la clasificación del evento anterior. Sigue estos pasos:</p>
+                    <ol class="relative border-l border-gray-600 space-y-10 pl-6">
+                        <li class="flex items-start">
+                            <div class="absolute -left-4 top-1 flex items-center justify-center bg-blue-500 h-8 w-8 rounded-full ring-4 ring-gray-800 text-white font-bold">1</div>
+                            <div class="ml-4">
+                                <h4 class="text-xl font-bold text-white">Anuncio del Orden</h4>
+                                <p class="text-gray-400 mt-1">Tras cada PPV, AEKCarlos publicará el orden de elección en el canal <code class="bg-gray-700 text-yellow-300 px-2 py-1 rounded">#elección-comodín</code>.</p>
+                            </div>
+                        </li>
+                        <li class="flex items-start">
+                            <div class="absolute -left-4 top-1 flex items-center justify-center bg-blue-500 h-8 w-8 rounded-full ring-4 ring-gray-800 text-white font-bold">2</div>
+                            <div class="ml-4">
+                                <h4 class="text-xl font-bold text-white">Límite de Tiempo (12h)</h4>
+                                <p class="text-gray-400 mt-1">Cada jugador tiene 12 horas para elegir. Si el tiempo expira, el turno pasa al siguiente. El jugador que perdió su turno podrá elegir más tarde de entre los comodines restantes.</p>
+                            </div>
+                        </li>
+                        <li class="flex items-start">
+                             <div class="absolute -left-4 top-1 flex items-center justify-center bg-blue-500 h-8 w-8 rounded-full ring-4 ring-gray-800 text-white font-bold">3</div>
+                            <div class="ml-4">
+                                <h4 class="text-xl font-bold text-white">Cómo Pedir el Comodín</h4>
+                                <p class="text-gray-400 mt-1">Cuando sea tu turno, escribe en el canal: <code class="bg-gray-700 text-yellow-300 px-2 py-1 rounded">Elijo comodín [NOMBRE] @AEKCarlos</code>. La mención es obligatoria.</p>
+                            </div>
+                        </li>
+                    </ol>
+                </div>
+            </section>
+
+            <section id="explorador">
+                <h2 class="text-3xl font-bold mb-4 text-center border-b-2 border-gray-700 pb-4">Explorador de Comodines</h2>
+                <p class="text-center text-gray-400 mb-8">Usa los filtros para encontrar rápidamente el comodín que necesitas.</p>
+                
+                <div class="card p-6 mb-8">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Buscar por nombre:</label>
+                            <input type="text" id="searchInput" placeholder="Ej: Phoenix Splash" class="w-full rounded-md p-2 text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Filtrar por tipo:</label>
+                            <div class="flex space-x-2">
+                                <button data-filter-type="all" class="filter-btn flex-1 p-2 rounded-md font-semibold active">Todos</button>
+                                <button data-filter-type="favor" class="filter-btn filter-btn-favor flex-1 p-2 rounded-md font-semibold">A Favor</button>
+                                <button data-filter-type="contra" class="filter-btn filter-btn-contra flex-1 p-2 rounded-md font-semibold">En Contra</button>
+                            </div>
+                        </div>
+                        <div>
+                           <label for="usoFilter" class="block text-sm font-medium text-gray-300 mb-2">Filtrar por uso:</label>
+                           <select id="usoFilter" class="w-full rounded-md p-2 text-white bg-gray-700 border border-gray-600 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                                <option value="all">Todos los momentos</option>
+                                <option value="Antes">Antes del PPV</option>
+                                <option value="Durante">Durante el PPV</option>
+                                <option value="Después">Después del PPV</option>
+                                <option value="Antes / Durante">Antes / Durante</option>
+                                <option value="Durante / Después">Durante / Después</option>
+                           </select>
+                        </div>
+                        <div>
+                           <label for="orientacionFilter" class="block text-sm font-medium text-gray-300 mb-2">Filtrar por orientación:</label>
+                           <select id="orientacionFilter" class="w-full rounded-md p-2 text-white bg-gray-700 border border-gray-600 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                                <option value="all">Todas las orientaciones</option>
+                                <option value="Divisional">Divisional</option>
+                                <option value="General">General</option>
+                                <option value="Media / Baja">Media / Baja</option>
+                                <option value="2ª División">2ª División</option>
+                           </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="wildcard-container" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                </div>
+            </section>
+        </main>
+
+        <footer class="text-center mt-16 pt-8 border-t border-gray-800">
+            <p class="text-gray-500">Reglamento y aplicación diseñados por AEKCarlos.</p>
+        </footer>
+    </div>
+
+<script>
+const wildcards = [
+    { name: "Phoenix Splash", type: "favor", explanation: "Si aciertas el ganador del combate inicial del PPV, obtienes un bono de +4 puntos en ese combate.", use: "Después", orientation: "Media / Baja" },
+    { name: "GTS (Go to Sleep)", type: "favor", explanation: "Puedes \"dormir\" un comodín En Contra que otro usuario de tu misma división haya usado contra ti en este PPV, dejándolo inactivo.", use: "Antes / Durante", orientation: "Divisional" },
+    { name: "Guerrilla Tactics", type: "favor", explanation: "Si fallas una predicción, puedes usar este comodín para que los puntos de esa predicción no resten, aunque normalmente lo harían.", use: "Después", orientation: "General" },
+    { name: "Five Knuckle Shuffle", type: "favor", explanation: "Te permite duplicar los puntos obtenidos en una predicción si es un combate sin título en juego.", use: "Antes", orientation: "General" },
+    { name: "Sweet Chin Music", type: "favor", explanation: "Si predices que el combate terminará por super-kick o finisher de impacto visual, y aciertas, obtienes +3 puntos extra.", use: "Antes", orientation: "General" },
+    { name: "Foreign Exchange", type: "favor", explanation: "Puedes intercambiar tu predicción menos popular por la más popular de un rival en tu misma división.", use: "Antes", orientation: "Divisional" },
+    { name: "Macho Madness", type: "favor", explanation: "Si aciertas el resultado de todos los combates con vestimenta extravagante o gimmick particular, obtienes +7 puntos.", use: "Después", orientation: "General" },
+    { name: "Diamond Cutter", type: "favor", explanation: "Si tu predicción de un combate termina en menos de 3 minutos, y la aciertas, obtienes x3 los puntos.", use: "Después", orientation: "General" },
+    { name: "Head of the Table", type: "favor", explanation: "Si aciertas la predicción de todos los campeonatos masculinos principales, obtienes un bono de +6 puntos.", use: "Después", orientation: "General" },
+    { name: "EST of WWE", type: "favor", explanation: "Si aciertas la predicción de todos los campeonatos femeninos principales, obtienes un bono de +6 puntos.", use: "Después", orientation: "General" },
+    { name: "Countdown Clock", type: "favor", explanation: "Te permite enviar una predicción para un combate específico hasta 1 minuto antes de que comience ese combate.", use: "Durante", orientation: "General" },
+    { name: "Legend Killer", type: "favor", explanation: "Si predices y aciertas la victoria de una estrella joven sobre un veterano, obtienes +5 puntos extra.", use: "Antes", orientation: "General" },
+    { name: "Punt Kick", type: "favor", explanation: "Elige a un luchador \"favorito\" (el que más gente predijo); si pierde, obtienes +8 puntos.", use: "Antes", orientation: "General" },
+    { name: "Rated R Superstar", type: "favor", explanation: "Si aciertas la predicción de un combate que termine por sumisión o rendición, obtienes +4 puntos extra.", use: "Antes", orientation: "General" },
+    { name: "The List of Jericho", type: "favor", explanation: "Elige a un rival de tu misma división; si aciertas el mismo número de predicciones que él, obtienes +3 puntos adicionales sobre su total.", use: "Después", orientation: "Divisional" },
+    { name: "People Power", type: "favor", explanation: "Si aciertas la victoria del luchador que es última opción en la predicción de la mayoría, obtienes +5 puntos extra.", use: "Antes", orientation: "Media / Baja" },
+    { name: "The Viper's RKO", type: "favor", explanation: "Puedes cambiar la predicción de un combate ya cerrado por la que menos gente ha elegido como ganadora.", use: "Antes", orientation: "General" },
+    { name: "Cesaro Swing", type: "favor", explanation: "Si aciertas una predicción triple o fatal de cuatro esquinas, los puntos se multiplican por x2.", use: "Antes", orientation: "General" },
+    { name: "Coup de Grâce", type: "favor", explanation: "Si aciertas la predicción del Main Event con una explicación detallada sobre el booking, obtienes +4 puntos extra.", use: "Antes", orientation: "General" },
+    { name: "Sister Abigail", type: "favor", explanation: "Te permite hacer una doble predicción en un combate: si aciertas ambas (ganador y método), triplicas los puntos.", use: "Antes", orientation: "General" },
+    { name: "Cross Rhodes", type: "favor", explanation: "Anula una penalización de puntos que te haya impuesto un comodín En Contra de tu misma división.", use: "Durante / Después", orientation: "Divisional" },
+    { name: "Coast to Coast", type: "favor", explanation: "Si aciertas una predicción de combate de escaleras, mesas o sillas, obtienes +4 puntos extra.", use: "Antes", orientation: "General" },
+    { name: "Hulk Up", type: "favor", explanation: "Si fallas tu predicción del Main Event, pero tu luchador \"favorito\" gana, se te suma +5 puntos para mitigar la pérdida.", use: "Antes", orientation: "General" },
+    { name: "Division Ace", type: "favor", explanation: "Elige a un luchador; si tú eres el único de tu división que predice su victoria, y aciertas, obtienes +4 puntos extra.", use: "Antes", orientation: "Divisional" },
+    { name: "Promotion Play", type: "favor", explanation: "Si eres de la 2ª División y aciertas todos tus combates, obtienes un bono de +10 puntos para el total de la porra.", use: "Después", orientation: "2ª División" },
+    { name: "Relegation Threat", type: "contra", explanation: "Obligas a que la predicción del Main Event de un rival de tu misma división valga solo 1 punto si acierta.", use: "Antes", orientation: "Divisional" },
+    { name: "Bottom Feeder Lock", type: "contra", explanation: "La predicción con más puntos de un rival de tu misma división vale 0 si la acierta.", use: "Antes", orientation: "Divisional" },
+    { name: "Mid-Card Blockade", type: "contra", explanation: "Elige a un rival de la mitad superior de tu misma división; su predicción más popular se le resta -4 puntos si acierta.", use: "Antes", orientation: "Divisional" },
+    { name: "The Manager's Cut", type: "contra", explanation: "Elige a un rival de tu misma división; si acierta, y ese combate tuvo interferencia de un Manager, pierde -3 puntos.", use: "Antes", orientation: "Divisional" },
+    { name: "Draw Out", type: "contra", explanation: "Si hay un empate en el número de aciertos entre tú y un rival de tu misma división, puedes restarle -5 puntos del total de la porra.", use: "Después", orientation: "Divisional" },
+    { name: "Contender’s Trap", type: "contra", explanation: "Elige a un rival de tu misma división; si acierta la predicción de un combate por título secundario, no suma ningún punto.", use: "Antes", orientation: "Divisional" },
+    { name: "Suspension", type: "contra", explanation: "Elige a un rival de tu misma división; no puede usar ningún comodín en el próximo PPV.", use: "Antes", orientation: "Divisional" },
+    { name: "Backstage Politics", type: "contra", explanation: "Obliga al rival de tu misma división a que su predicción del combate más largo del PPV valga 0 puntos si acierta.", use: "Antes", orientation: "Divisional" },
+    { name: "The Curse of the Zone", type: "contra", explanation: "Elige a un rival de tu misma división que vaya en la zona baja; su predicción del Main Event se anula si la acierta.", use: "Antes", orientation: "Divisional" },
+    { name: "Division Jump", type: "contra", explanation: "Puedes cambiar la predicción del Main Event de un rival de tu misma división a un resultado de Descalificación.", use: "Antes", orientation: "Divisional" },
+    { name: "Disqualification Push", type: "contra", explanation: "Elige a un rival de tu misma división; su predicción de combate debe ser Descalificación; si acierta, solo suma 1 punto.", use: "Antes", orientation: "Divisional" },
+    { name: "Rating Drop", type: "contra", explanation: "Elige a un rival de tu misma división; si acierta un combate que la mayoría predijo que ganaría el Face, solo suma la mitad de los puntos.", use: "Antes", orientation: "Divisional" },
+    { name: "The Gold Diggers", type: "contra", explanation: "Si un rival de tu misma división usa un comodín \"A Favor\" para obtener puntos extra, puedes robar 50% de esos puntos extra.", use: "Después", orientation: "Divisional" },
+    { name: "Injury Angle", type: "contra", explanation: "Elige a un rival de tu misma división; si acierta menos de la mitad de sus predicciones, le restas -6 puntos del total de la porra.", use: "Después", orientation: "Divisional" },
+    { name: "Losers Bracket", type: "contra", explanation: "Si el rival va en la mitad inferior de su división, su predicción más popular resta -2 puntos si acierta.", use: "Antes", orientation: "Media / Baja" },
+    { name: "False Finish", type: "contra", explanation: "Elige la predicción de un rival de tu misma división; si su luchador gana, pero el combate tiene un final rápido/polémico, pierde -3 puntos.", use: "Antes", orientation: "Divisional" },
+    { name: "Booking Block", type: "contra", explanation: "Anula cualquier comodín A Favor de un rival de tu misma división cuyo propósito sea añadir puntos extra.", use: "Antes", orientation: "Divisional" },
+    { name: "The Veteran's Gate", type: "contra", explanation: "Obliga a un rival de tu misma división a que su predicción más importante sea sobre un luchador veterano que tú elijas.", use: "Antes", orientation: "Divisional" },
+    { name: "Heel Turn", type: "contra", explanation: "Elige a un rival de tu misma división; si su predicción más importante es de un luchador Face, y gana, solo suma 2 puntos.", use: "Antes", orientation: "Divisional" },
+    { name: "Bad Booking", type: "contra", explanation: "Puedes cambiar el resultado de la predicción de un rival de tu misma división al menos popular entre todos los usuarios.", use: "Antes", orientation: "Divisional" },
+    { name: "Career Threat Match", type: "contra", explanation: "Si el rival de tu misma división acierta su predicción, y es un combate por un contrato/carrera, no suma ningún punto.", use: "Antes", orientation: "Divisional" },
+    { name: "The Forbidden Door", type: "contra", explanation: "Elige a un rival de tu misma división; su próximo comodín A Favor usado solo puede anular un comodín En Contra de la misma división.", use: "Antes / Durante", orientation: "Divisional" },
+    { name: "Championship Curse", type: "contra", explanation: "Elige la predicción de un rival de tu misma división; si es por un título mundial y el campeón retiene, la predicción resta -5 puntos si acierta.", use: "Antes", orientation: "Divisional" },
+    { name: "Unstoppable Dominator", type: "contra", explanation: "Elige a un rival de tu misma división que tenga un 80% o más de aciertos; su siguiente predicción solo le dará 1 punto si acierta.", use: "Durante", orientation: "Divisional" },
+    { name: "The Corporate Mandate", type: "contra", explanation: "Elige a un rival de tu misma división; si tiene dos predicciones con el mismo resultado, ambas restan -3 puntos si acierta una.", use: "Antes", orientation: "Divisional" }
+];
+
+const container = document.getElementById('wildcard-container');
+const searchInput = document.getElementById('searchInput');
+const typeButtons = document.querySelectorAll('[data-filter-type]');
+const usoFilter = document.getElementById('usoFilter');
+const orientacionFilter = document.getElementById('orientacionFilter');
+
+let filters = {
+    search: '',
+    type: 'all',
+    uso: 'all',
+    orientacion: 'all'
+};
+
+function renderWildcards() {
+    container.innerHTML = '';
+    const filteredWildcards = wildcards.filter(wc => {
+        const searchMatch = wc.name.toLowerCase().includes(filters.search.toLowerCase());
+        const typeMatch = filters.type === 'all' || wc.type === filters.type;
+        const usoMatch = filters.uso === 'all' || wc.use === filters.uso;
+        const orientacionMatch = filters.orientacion === 'all' || wc.orientation === filters.orientacion;
+        return searchMatch && typeMatch && usoMatch && orientacionMatch;
+    });
+
+    if (filteredWildcards.length === 0) {
+        container.innerHTML = `<div class="col-span-1 md:col-span-2 xl:col-span-3 text-center text-gray-400 py-10">
+            <p class="text-xl">No se encontraron comodines con los filtros seleccionados.</p>
+        </div>`;
+        return;
+    }
+
+    filteredWildcards.forEach(wc => {
+        const cardClass = wc.type === 'favor' ? 'favor-card' : 'contra-card';
+        const headerClass = wc.type === 'favor' ? 'favor-header' : 'contra-header';
+        const typeText = wc.type === 'favor' ? 'A FAVOR' : 'EN CONTRA';
+
+        const cardElement = document.createElement('div');
+        cardElement.className = `card ${cardClass} flex flex-col`;
+        cardElement.innerHTML = `
+            <div class="p-4 ${headerClass} rounded-t-lg">
+                <h4 class="text-xl font-bold tracking-wide">${wc.name}</h4>
+                <p class="text-sm font-semibold">${typeText}</p>
+            </div>
+            <div class="p-6 flex-grow">
+                <p class="text-gray-300">${wc.explanation}</p>
+            </div>
+            <div class="p-4 bg-gray-800 rounded-b-lg mt-auto flex justify-between items-center text-sm">
+                <span class="tag tag-uso">${wc.use}</span>
+                <span class="tag tag-orientacion">${wc.orientation}</span>
+            </div>
+        `;
+        container.appendChild(cardElement);
+    });
+}
+
+searchInput.addEventListener('input', (e) => {
+    filters.search = e.target.value;
+    renderWildcards();
+});
+
+typeButtons.forEach(button => {
+    button.addEventListener('click', () => {
+        typeButtons.forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.dataset.filterType === 'favor') btn.classList.remove('filter-btn-favor');
+            if (btn.dataset.filterType === 'contra') btn.classList.remove('filter-btn-contra');
+        });
+        
+        const type = button.dataset.filterType;
+        filters.type = type;
+        
+        button.classList.add('active');
+        if (type === 'favor') button.classList.add('filter-btn-favor');
+        if (type === 'contra') button.classList.add('filter-btn-contra');
+
+        renderWildcards();
+    });
+});
+// Set default active button
+document.querySelector('[data-filter-type="all"]').classList.add('active');
+
+
+usoFilter.addEventListener('change', (e) => {
+    filters.uso = e.target.value;
+    renderWildcards();
+});
+
+orientacionFilter.addEventListener('change', (e) => {
+    filters.orientacion = e.target.value;
+    renderWildcards();
+});
+
+document.addEventListener('DOMContentLoaded', renderWildcards);
+
+</script>
+</body>
+</html>
