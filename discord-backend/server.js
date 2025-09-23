@@ -1,22 +1,24 @@
-
 import express from "express";
 import axios from "axios";
 import admin from "firebase-admin";
 
 const app = express();
 
-// 🔥 Inicializa Firebase Admin con tu clave privada
+// 🔥 Inicializa Firebase Admin usando variable de entorno en Render
+const firebaseKey = JSON.parse(process.env.FIREBASE_KEY);
 admin.initializeApp({
-  credential: admin.credential.cert("./firebase-key.json"), // tu archivo de clave privada
+  credential: admin.credential.cert(firebaseKey),
 });
 
-const clientId = "TU_CLIENT_ID";
-const clientSecret = "TU_CLIENT_SECRET";
-const redirectUri = "https://coygcarlos.github.io/astu-porra";
+// Usa variables de entorno para mantener tus credenciales seguras
+const clientId = process.env.DISCORD_CLIENT_ID;
+const clientSecret = process.env.DISCORD_CLIENT_SECRET;
+const redirectUri = process.env.DISCORD_REDIRECT_URI;
 
 // Endpoint al que llamará tu frontend con el "code"
 app.get("/api/discord/callback", async (req, res) => {
   const code = req.query.code;
+  if (!code) return res.status(400).json({ error: "No code provided" });
 
   try {
     // 1. Cambiar code por access_token
@@ -56,4 +58,5 @@ app.get("/api/discord/callback", async (req, res) => {
   }
 });
 
-app.listen(3000, () => console.log("Servidor en http://localhost:3000"));
+const port = process.env.PORT || 3000;
+app.listen(port, () => console.log(`Servidor corriendo en puerto ${port}`));
