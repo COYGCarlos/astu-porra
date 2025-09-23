@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" xintegrity="sha512-iecdLp/X4/t/zI06p6F+2x0sK9fXJ2jW12lM6uW2N/1a12jF6sR/K9v2b5Fz14bB5L5qJ+yJ2d7l1lI/L1lI/Q==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <style>
         body {
             font-family: 'Roboto', sans-serif;
@@ -93,6 +94,11 @@
         <header class="text-center mb-8">
             <h1 class="text-4xl md:text-6xl font-bold tracking-wider text-white">AstuPorra</h1>
             <p class="text-xl md:text-2xl text-gray-400 mt-2">Reglamento, Comodines y Clasificación</p>
+            <div id="auth-container" class="mt-4">
+                <button id="discord-login-btn" class="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg shadow-lg hover:bg-blue-700 transition duration-300">
+                    <i class="fab fa-discord"></i> Iniciar sesión con Discord
+                </button>
+            </div>
         </header>
 
         <nav class="flex justify-center mb-8 border-b-2 border-gray-700">
@@ -201,7 +207,7 @@
                     </div>
                     
                     <div id="wildcard-container" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                        </div>
+                    </div>
                 </section>
             </div>
 
@@ -218,7 +224,7 @@
                                 </tr>
                             </thead>
                             <tbody id="division1-table">
-                                </tbody>
+                            </tbody>
                         </table>
                     </div>
                     <div class="card p-6 mt-8">
@@ -232,7 +238,7 @@
                                 </tr>
                             </thead>
                             <tbody id="division2-table">
-                                </tbody>
+                            </tbody>
                         </table>
                     </div>
                 </section>
@@ -244,7 +250,22 @@
         </footer>
     </div>
 
-    <script>
+    <!-- Firebase Imports and Configuration -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, onSnapshot, getDoc, setDoc, query, where, getDocs, orderBy, limit, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        setLogLevel('debug');
+
+        // Global variables provided by the environment
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        let db, auth;
+        let userId = null;
+
         const wildcards = [
             { name: "Phoenix Splash", type: "favor", explanation: "Si aciertas el ganador del combate inicial del PPV, obtienes un bono de +4 puntos en ese combate.", use: "Después", orientation: "Media / Baja" },
             { name: "GTS (Go to Sleep)", type: "favor", explanation: "Puedes \"dormir\" un comodín En Contra que otro usuario de tu misma división haya usado contra ti en este PPV, dejándolo inactivo.", use: "Antes / Durante", orientation: "Divisional" },
@@ -272,7 +293,7 @@
             { name: "Division Ace", type: "favor", explanation: "Elige a un luchador; si tú eres el único de tu división que predice su victoria, y aciertas, obtienes +4 puntos extra.", use: "Antes", orientation: "Divisional" },
             { name: "Promotion Play", type: "favor", explanation: "Si eres de la 2ª División y aciertas todos tus combates, obtienes un bono de +10 puntos para el total de la porra.", use: "Después", orientation: "2ª División" },
             { name: "Relegation Threat", type: "contra", explanation: "Obligas a que la predicción del Main Event de un rival de tu misma división valga solo 1 punto si acierta.", use: "Antes", orientation: "Divisional" },
-            { name: "Bottom Feeder Lock", type: "contra", explanation: "La predicción con más puntos de un rival de tu misma división vale 0 si la acierta.", use: "Antes", orientation: "Divisional" },
+            { name: "Bottom Feeder Lock", type: "contra", explanation: "La predicción con más puntos de un rival de tu misma división vale 0 si la acerta.", use: "Antes", orientation: "Divisional" },
             { name: "Mid-Card Blockade", type: "contra", explanation: "Elige a un rival de la mitad superior de tu misma división; su predicción más popular se le resta -4 puntos si acierta.", use: "Antes", orientation: "Divisional" },
             { name: "The Manager's Cut", type: "contra", explanation: "Elige a un rival de tu misma división; si acierta, y ese combate tuvo interferencia de un Manager, pierde -3 puntos.", use: "Antes", orientation: "Divisional" },
             { name: "Draw Out", type: "contra", explanation: "Si hay un empate en el número de aciertos entre tú y un rival de tu misma división, puedes restarle -5 puntos del total de la porra.", use: "Después", orientation: "Divisional" },
@@ -298,46 +319,19 @@
             { name: "The Corporate Mandate", type: "contra", explanation: "Elige a un rival de tu misma división; si tiene dos predicciones con el mismo resultado, ambas restan -3 puntos si acierta una.", use: "Antes", orientation: "Divisional" }
         ];
 
-        const standings = {
-            division1: [
-                { position: '1º', user: 'Fabio', score: 356 },
-                { position: '2º', user: 'MrKev719', score: 356 },
-                { position: '3º', user: 'BlissedAstu', score: 346 },
-                { position: '4º', user: 'Geroo', score: 340 },
-                { position: '5º', user: 'Gonsa', score: 329 },
-                { position: '6º', user: 'AEKCarlos', score: 326 },
-                { position: '7º', user: 'bautiiiii', score: 308 }
-            ],
-            division2: [
-                { position: '1º', user: 'Nelsonageitos', score: 315 },
-                { position: '2º', user: 'DannyLopez_90', score: 310 },
-                { position: '3º', user: 'jairlopezojeda', score: 308 },
-                { position: '4º', user: 'Ruiz24_', score: 277 },
-                { position: '5º', user: 'Slyever', score: 250 },
-                { position: '6º', user: 'patodiego', score: 176 },
-                { position: '7º', user: 'dany_1208', score: 98 },
-                { position: '8º', user: 'AceSoul', score: 64 }
-            ]
+        let filters = {
+            search: '',
+            type: 'all',
+            uso: 'all',
+            orientacion: 'all'
         };
+        
+        // Firebase initialization and authentication
+        const app = initializeApp(firebaseConfig);
+        db = getFirestore(app);
+        auth = getAuth(app);
 
-        const userAvatars = {
-            'Fabio': 'img/Fabio.png',
-            'MrKev719': 'img/MrKev719.png',
-            'BlissedAstu': 'img/BlissedAstu.png',
-            'Geroo': 'img/Geroo.png',
-            'Gonsa': 'img/Gonsa.png',
-            'AEKCarlos': 'img/AEKCarlos.png',
-            'bautiiiii': 'img/bautiiiii.png',
-            'Nelsonageitos': 'img/Nelsonageitos.png',
-            'DannyLopez_90': 'img/DannyLopez_90.png',
-            'jairlopezojeda': 'img/jairlopezojeda.png',
-            'Ruiz24_': 'img/Ruiz24.png',
-            'Slyever': 'img/Slyever.png',
-            'patodiego': 'img/patodiego.png',
-            'dany_1208': 'img/dany_1208.png',
-            'AceSoul': 'img/AceSoul.png'
-        };
-
+        // UI elements
         const wildcardContainer = document.getElementById('wildcard-container');
         const searchInput = document.getElementById('searchInput');
         const typeButtons = document.querySelectorAll('[data-filter-type]');
@@ -349,14 +343,93 @@
         const standingsContent = document.getElementById('standingsContent');
         const division1Table = document.getElementById('division1-table');
         const division2Table = document.getElementById('division2-table');
+        const authContainer = document.getElementById('auth-container');
+        const discordLoginBtn = document.getElementById('discord-login-btn');
 
-        let filters = {
-            search: '',
-            type: 'all',
-            uso: 'all',
-            orientacion: 'all'
-        };
+        // Handles the real Discord login process (redirects to Discord's authorization URL)
+        function handleDiscordLogin() {
+            // NOTE: For this to work in a real app, you need to register a Discord OAuth2 application.
+            // Replace 'YOUR_CLIENT_ID' with your actual client ID.
+            // Replace 'YOUR_REDIRECT_URI' with your redirect URI (must be registered in Discord's developer portal).
+            // This URI is where Discord will send the user back after they authorize your app.
+            const clientId = '1420016493835452487';
+            const redirectUri = encodeURIComponent('https://coygcarlos.github.io/astu-porra');
+            const scope = encodeURIComponent('identify'); // 'identify' is needed to get the user's basic info
+            const discordAuthUrl = `https://discord.com/oauth2/authorize?client_id=${clientId}&response_type=code&redirect_uri=${redirectUri}&scope=${scope}`;
+            window.location.href = discordAuthUrl;
+        }
 
+        discordLoginBtn.addEventListener('click', handleDiscordLogin);
+
+        // This is the fallback/simulated authentication for the development environment.
+        // In a real application, you would handle the redirect from Discord here.
+        async function handleFirebaseAuth() {
+            try {
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (error) {
+                console.error("Error al iniciar sesión:", error);
+            }
+        }
+
+        // Auth state listener
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                userId = user.uid;
+                authContainer.innerHTML = `
+                    <div class="flex items-center justify-center space-x-2">
+                        <span class="text-gray-400 text-sm">ID de usuario: ${userId}</span>
+                        <button id="logout-btn" class="bg-red-600 text-white font-bold py-1 px-3 rounded-lg shadow-lg hover:bg-red-700 transition duration-300">
+                            Cerrar sesión
+                        </button>
+                    </div>
+                `;
+                document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
+                
+                fetchStandings();
+            } else {
+                userId = null;
+                authContainer.innerHTML = `<button id="discord-login-btn" class="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg shadow-lg hover:bg-blue-700 transition duration-300">
+                    <i class="fab fa-discord"></i> Iniciar sesión con Discord
+                </button>`;
+                document.getElementById('discord-login-btn').addEventListener('click', handleDiscordLogin);
+            }
+        });
+
+        async function fetchStandings() {
+            try {
+                const standingsData = [
+                    { user: 'Fabio', score: 356, division: 1, avatar: 'img/Fabio.png' },
+                    { user: 'MrKev719', score: 356, division: 1, avatar: 'img/MrKev719.png' },
+                    { user: 'BlissedAstu', score: 346, division: 1, avatar: 'img/BlissedAstu.png' },
+                    { user: 'Geroo', score: 340, division: 1, avatar: 'img/Geroo.png' },
+                    { user: 'Gonsa', score: 329, division: 1, avatar: 'img/Gonsa.png' },
+                    { user: 'AEKCarlos', score: 326, division: 1, avatar: 'img/AEKCarlos.png' },
+                    { user: 'bautiiiii', score: 308, division: 1, avatar: 'img/bautiiiii.png' },
+                    { user: 'Nelsonageitos', score: 315, division: 2, avatar: 'img/Nelsonageitos.png' },
+                    { user: 'DannyLopez_90', score: 310, division: 2, avatar: 'img/DannyLopez_90.png' },
+                    { user: 'jairlopezojeda', score: 308, division: 2, avatar: 'img/jairlopezojeda.png' },
+                    { user: 'Ruiz24_', score: 277, division: 2, avatar: 'img/Ruiz24.png' },
+                    { user: 'Slyever', score: 250, division: 2, avatar: 'img/Slyever.png' },
+                    { user: 'patodiego', score: 176, division: 2, avatar: 'img/patodiego.png' },
+                    { user: 'dany_1208', score: 98, division: 2, avatar: 'img/dany_1208.png' },
+                    { user: 'AceSoul', score: 64, division: 2, avatar: 'img/AceSoul.png' }
+                ];
+                
+                const division1 = standingsData.filter(p => p.division === 1);
+                const division2 = standingsData.filter(p => p.division === 2);
+                
+                renderStandings(division1, 'division1-table');
+                renderStandings(division2, 'division2-table');
+
+            } catch (e) {
+                console.error("Error al obtener la clasificación: ", e);
+            }
+        }
+        
         function renderWildcards() {
             wildcardContainer.innerHTML = '';
             const filteredWildcards = wildcards.filter(wc => {
@@ -401,11 +474,13 @@
         function renderStandings(data, tableBodyId) {
             const tableBody = document.getElementById(tableBodyId);
             tableBody.innerHTML = '';
-            data.forEach(player => {
+            data.sort((a, b) => b.score - a.score);
+
+            data.forEach((player, index) => {
                 const row = document.createElement('tr');
-                const avatarUrl = userAvatars[player.user] || 'https://i.pravatar.cc/150';
+                const avatarUrl = player.avatar || 'https://i.pravatar.cc/150';
                 row.innerHTML = `
-                    <td>${player.position}</td>
+                    <td>${index + 1}º</td>
                     <td><img src="${avatarUrl}" alt="${player.user}" class="profile-img">${player.user}</td>
                     <td>${player.score}</td>
                 `;
@@ -426,8 +501,9 @@
             standingsContent.classList.remove('hidden');
             rulesTabBtn.classList.remove('active');
             standingsTabBtn.classList.add('active');
-            renderStandings(standings.division1, 'division1-table');
-            renderStandings(standings.division2, 'division2-table');
+            if (userId) {
+                fetchStandings();
+            }
         });
 
         searchInput.addEventListener('input', (e) => {
@@ -465,8 +541,13 @@
             renderWildcards();
         });
         
-        document.addEventListener('DOMContentLoaded', renderWildcards);
+        document.addEventListener('DOMContentLoaded', () => {
+            renderWildcards();
+        });
+
+        // The initial authentication for the development environment.
+        // This is what makes the app "log in" automatically.
+        window.addEventListener('load', handleFirebaseAuth);
     </script>
 </body>
 </html>
-
