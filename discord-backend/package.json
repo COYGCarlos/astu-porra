@@ -1,6 +1,7 @@
 {
   "name": "discord-backend",
   "version": "1.0.0",
+  "description": "Backend para login con Discord y Firebase",
   "type": "module",
   "main": "server.js",
   "scripts": {
