@@ -22,7 +22,8 @@
             background-color: #1f2937;
             border-radius: 0.75rem;
             border: 1px solid #374151;
-            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out, border-color 0.2s;
+            cursor: pointer; /* Indica que es clickeable */
         }
         .card:hover {
             transform: translateY(-5px);
@@ -32,6 +33,17 @@
         .contra-card { border-left: 4px solid #ef4444; }
         .favor-header { background-color: rgba(16, 185, 129, 0.1); color: #10b981; }
         .contra-header { background-color: rgba(239, 68, 68, 0.1); color: #ef4444; }
+
+        /* Estilo para comodín seleccionado */
+        .card.selected {
+            border-color: #3b82f6; /* Borde azul para destacar */
+            box-shadow: 0 0 0 3px #3b82f6;
+            transform: scale(1.02);
+        }
+        .card.selected .favor-card, .card.selected .contra-card {
+             border-left-width: 8px; /* Borde izquierdo más grueso */
+        }
+
         .tag {
             display: inline-block;
             padding: 0.25rem 0.75rem;
@@ -84,6 +96,18 @@
             display: inline-block;
             vertical-align: middle;
             border: 2px solid #3b82f6;
+        }
+        /* Estilo para el botón de acción */
+        #confirmSelectionBtn {
+            background-color: #3b82f6;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 700;
+            transition: background-color 0.2s;
+        }
+        #confirmSelectionBtn:hover {
+            background-color: #2563eb;
         }
     </style>
 </head>
@@ -160,7 +184,7 @@
                 </section>
                 <section id="explorador">
                     <h2 class="text-3xl font-bold mb-4 text-center border-b-2 border-gray-700 pb-4">Explorador de Comodines</h2>
-                    <p class="text-center text-gray-400 mb-8">Usa los filtros para encontrar rápidamente el comodín que necesitas.</p>
+                    <p class="text-center text-gray-400 mb-8">Usa los filtros para encontrar rápidamente el comodín que necesitas. **Haz clic en cualquier comodín para seleccionarlo/deseleccionarlo.**</p>
                     
                     <div class="card p-6 mb-8">
                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -201,7 +225,25 @@
                     </div>
                     
                     <div id="wildcard-container" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <!-- Los comodines se renderizan aquí -->
+                    </div>
+
+                    <!-- Nueva sección para el botón de acción y el resumen -->
+                    <div class="mt-12 text-center">
+                        <button id="confirmSelectionBtn" disabled class="opacity-50 cursor-not-allowed">
+                            Mostrar Selección (0 Comodines)
+                        </button>
+                    </div>
+
+                    <div id="seleccion-resumen" class="mt-12 hidden">
+                        <h2 class="text-3xl font-bold mb-4 text-center border-b-2 border-blue-700 pb-4 text-blue-400">Comodines Seleccionados</h2>
+                        <div id="summary-container" class="grid sm:grid-cols-1 lg:grid-cols-2 gap-6">
+                            <p class="col-span-1 lg:col-span-2 text-center text-gray-400">Ningún comodín seleccionado.</p>
                         </div>
+                        <div class="mt-8 p-4 bg-yellow-900/30 border border-yellow-700 rounded-lg text-yellow-300 text-center">
+                            <p class="font-semibold">Nota: Esta es solo una previsualización. Recuerda usar el formato correcto en el canal de Discord para confirmar tu elección.</p>
+                        </div>
+                    </div>
                 </section>
             </div>
 
@@ -349,6 +391,10 @@
         const standingsContent = document.getElementById('standingsContent');
         const division1Table = document.getElementById('division1-table');
         const division2Table = document.getElementById('division2-table');
+        // Nuevos elementos para la funcionalidad de selección
+        const confirmSelectionBtn = document.getElementById('confirmSelectionBtn');
+        const seleccionResumen = document.getElementById('seleccion-resumen');
+        const summaryContainer = document.getElementById('summary-container');
 
         let filters = {
             search: '',
@@ -357,8 +403,88 @@
             orientacion: 'all'
         };
 
-        function renderWildcards() {
+        // Array para almacenar los nombres de los comodines seleccionados
+        let selectedWildcards = [];
+
+        // Función para manejar la selección/deselección del comodín
+        function toggleWildcardSelection(name) {
+            const index = selectedWildcards.indexOf(name);
+            if (index > -1) {
+                // Deseleccionar
+                selectedWildcards.splice(index, 1);
+            } else {
+                // Seleccionar
+                selectedWildcards.push(name);
+            }
+            // Volver a renderizar los comodines para actualizar el estilo visual
+            renderWildcards(false); 
+            // Actualizar el botón de resumen
+            updateSummaryButton();
+            // Ocultar el resumen si no hay nada seleccionado
+            if (selectedWildcards.length === 0) {
+                 seleccionResumen.classList.add('hidden');
+            }
+        }
+
+        // Función para actualizar el texto y estado del botón de resumen
+        function updateSummaryButton() {
+            const count = selectedWildcards.length;
+            confirmSelectionBtn.textContent = `Mostrar Selección (${count} Comodines)`;
+            if (count > 0) {
+                confirmSelectionBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                confirmSelectionBtn.disabled = false;
+            } else {
+                confirmSelectionBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                confirmSelectionBtn.disabled = true;
+                seleccionResumen.classList.add('hidden');
+            }
+        }
+
+        // Función para renderizar el resumen de comodines
+        function renderSummary() {
+            if (selectedWildcards.length === 0) {
+                summaryContainer.innerHTML = `<p class="col-span-1 lg:col-span-2 text-center text-gray-400">Ningún comodín seleccionado.</p>`;
+                return;
+            }
+
+            summaryContainer.innerHTML = '';
+            
+            // Filtramos los objetos completos de los comodines seleccionados
+            const summaryWildcards = wildcards.filter(wc => selectedWildcards.includes(wc.name));
+
+            summaryWildcards.forEach(wc => {
+                const cardClass = wc.type === 'favor' ? 'favor-card' : 'contra-card';
+                const headerClass = wc.type === 'favor' ? 'favor-header' : 'contra-header';
+                const typeText = wc.type === 'favor' ? 'A FAVOR' : 'EN CONTRA';
+
+                const cardElement = document.createElement('div');
+                cardElement.className = `card ${cardClass} flex flex-col selected`; // Se mantiene el estilo de selección
+                cardElement.innerHTML = `
+                    <div class="p-4 ${headerClass} rounded-t-lg">
+                        <h4 class="text-xl font-bold tracking-wide">${wc.name}</h4>
+                        <p class="text-sm font-semibold">${typeText}</p>
+                    </div>
+                    <div class="p-6 flex-grow">
+                        <p class="text-gray-300">${wc.explanation}</p>
+                    </div>
+                    <div class="p-4 bg-gray-800 rounded-b-lg mt-auto flex justify-between items-center text-sm">
+                        <span class="tag tag-uso">${wc.use}</span>
+                        <span class="tag tag-orientacion">${wc.orientation}</span>
+                    </div>
+                `;
+                summaryContainer.appendChild(cardElement);
+            });
+        }
+
+        // renderWildcards ahora toma un parámetro opcional para forzar la limpieza si se necesita
+        function renderWildcards(clearSelection = true) {
             wildcardContainer.innerHTML = '';
+            if (clearSelection) {
+                 // Si se cambia el filtro, se limpia la selección (comportamiento habitual en filtros)
+                selectedWildcards = [];
+                updateSummaryButton();
+            }
+            
             const filteredWildcards = wildcards.filter(wc => {
                 const searchMatch = wc.name.toLowerCase().includes(filters.search.toLowerCase());
                 const typeMatch = filters.type === 'all' || wc.type === filters.type;
@@ -378,9 +504,12 @@
                 const cardClass = wc.type === 'favor' ? 'favor-card' : 'contra-card';
                 const headerClass = wc.type === 'favor' ? 'favor-header' : 'contra-header';
                 const typeText = wc.type === 'favor' ? 'A FAVOR' : 'EN CONTRA';
+                const isSelected = selectedWildcards.includes(wc.name) ? ' selected' : '';
 
                 const cardElement = document.createElement('div');
-                cardElement.className = `card ${cardClass} flex flex-col`;
+                cardElement.className = `card ${cardClass}${isSelected} flex flex-col`;
+                cardElement.dataset.wildcardName = wc.name; // Almacenamos el nombre para el click
+
                 cardElement.innerHTML = `
                     <div class="p-4 ${headerClass} rounded-t-lg">
                         <h4 class="text-xl font-bold tracking-wide">${wc.name}</h4>
@@ -394,6 +523,12 @@
                         <span class="tag tag-orientacion">${wc.orientation}</span>
                     </div>
                 `;
+                
+                // Añadir el listener de click para la selección
+                cardElement.addEventListener('click', () => {
+                    toggleWildcardSelection(wc.name);
+                });
+
                 wildcardContainer.appendChild(cardElement);
             });
         }
@@ -413,12 +548,26 @@
             });
         }
 
+        // Listener para el botón de confirmar/mostrar selección
+        confirmSelectionBtn.addEventListener('click', () => {
+            if (seleccionResumen.classList.contains('hidden')) {
+                // Si está oculto, lo mostramos y renderizamos el resumen
+                seleccionResumen.classList.remove('hidden');
+                renderSummary();
+                confirmSelectionBtn.textContent = `Ocultar Selección (${selectedWildcards.length} Comodines)`;
+            } else {
+                // Si está visible, lo ocultamos
+                seleccionResumen.classList.add('hidden');
+                confirmSelectionBtn.textContent = `Mostrar Selección (${selectedWildcards.length} Comodines)`;
+            }
+        });
+
         rulesTabBtn.addEventListener('click', () => {
             rulesContent.classList.remove('hidden');
             standingsContent.classList.add('hidden');
             rulesTabBtn.classList.add('active');
             standingsTabBtn.classList.remove('active');
-            renderWildcards();
+            renderWildcards(); // Al cambiar de pestaña, se mantiene el estado de selección
         });
 
         standingsTabBtn.addEventListener('click', () => {
@@ -430,20 +579,19 @@
             renderStandings(standings.division2, 'division2-table');
         });
 
-        searchInput.addEventListener('input', (e) => {
-            filters.search = e.target.value;
+        // Al cambiar cualquier filtro, reseteamos la selección y volvemos a renderizar
+        searchInput.addEventListener('input', () => {
+            filters.search = searchInput.value;
             renderWildcards();
         });
 
         typeButtons.forEach(button => {
             button.addEventListener('click', () => {
                 typeButtons.forEach(btn => {
-                    btn.classList.remove('active');
-                    if (btn.dataset.filterType === 'favor') btn.classList.remove('filter-btn-favor');
-                    if (btn.dataset.filterType === 'contra') btn.classList.remove('filter-btn-contra');
+                    btn.classList.remove('active', 'filter-btn-favor', 'filter-btn-contra');
                 });
                 
-                const type = button.dataset.filterType;
+                const type = button.dataset.filter-type;
                 filters.type = type;
                 
                 button.classList.add('active');
@@ -465,9 +613,10 @@
             renderWildcards();
         });
         
-        document.addEventListener('DOMContentLoaded', renderWildcards);
+        document.addEventListener('DOMContentLoaded', () => {
+            renderWildcards();
+            updateSummaryButton();
+        });
     </script>
 </body>
 </html>
-
-
