@@ -436,6 +436,16 @@ updateComparison = function() {
   };
 })(); 
 
+
+// --- Ocultar versus-card al hacer scroll instantáneamente ---
+window.addEventListener('scroll', () => {
+  if (typeof versusCard !== 'undefined' && versusCard && versusCard.style.display === 'flex') {
+    versusCard.style.display = 'none';
+    const diffEl = document.querySelector('.diff-center');
+    if (diffEl) diffEl.remove();
+  }
+});
+
 </script>
     <!-- Fuentes personalizadas -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -2209,6 +2219,16 @@ updateComparison = function() {
     }
   };
 })(); 
+
+
+// --- Ocultar versus-card al hacer scroll instantáneamente ---
+window.addEventListener('scroll', () => {
+  if (typeof versusCard !== 'undefined' && versusCard && versusCard.style.display === 'flex') {
+    versusCard.style.display = 'none';
+    const diffEl = document.querySelector('.diff-center');
+    if (diffEl) diffEl.remove();
+  }
+});
 
 </script>
 </body>
