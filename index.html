@@ -5,7 +5,438 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AstuPorra</title>
     <!-- Carga de Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com">
+// --- Efecto visual al seleccionar dos personas (zoom sutil y resto gris) ---
+
+// Añadimos los estilos necesarios para el efecto
+const styleFocus = document.createElement("style");
+styleFocus.innerHTML = `
+@keyframes focusPop {
+  0% { box-shadow: none; background-color: rgba(99,102,241,0.2); }
+  100% { box-shadow: 0 0 25px rgba(99,102,241,0.6); background-color: rgba(99,102,241,0.3); }
+}
+  0% { transform: scale(1); box-shadow: none; }
+  100% {  box-shadow: 0 0 20px rgba(99,102,241,0.5); }
+}
+.focused {
+  box-shadow: 0 0 25px rgba(99,102,241,0.6);
+  background-color: rgba(99,102,241,0.3);
+  position: relative;
+  z-index: 10;
+
+  animation: focusPop 0.3s ease-out forwards;
+  z-index: 10;
+  position: relative;
+}
+.dimmed {
+  opacity: 0.4;
+  filter: grayscale(100%);
+  transition: opacity 0.3s ease, filter 0.3s ease;
+}
+`;
+document.head.appendChild(styleFocus);
+
+// Sobrescribimos updateComparison para añadir el nuevo efecto visual
+const oldUpdateComparison = updateComparison;
+updateComparison = function() {
+    oldUpdateComparison();
+
+    // Limpiar cualquier estado anterior
+    document.querySelectorAll('#clasificacion tbody tr').forEach(r => {
+        r.classList.remove('focused', 'dimmed');
+    });
+
+    if (selectedRows.length === 2) {
+        const [row1, row2] = selectedRows;
+        const allRows = Array.from(row1.closest('tbody').querySelectorAll('tr'));
+
+        // Aplicar efecto visual
+        allRows.forEach(r => {
+            if (r !== row1 && r !== row2) {
+                r.classList.add('dimmed');
+            }
+        });
+        row1.classList.add('focused');
+        row2.classList.add('focused');
+    }
+};
+
+
+// --- Funciones Deluxe ---
+
+// Botón "Volver arriba"
+const backToTop = document.createElement('button');
+backToTop.id = 'back-to-top';
+backToTop.innerHTML = '↑';
+document.body.appendChild(backToTop);
+
+window.addEventListener('scroll', () => {
+  backToTop.style.display = window.scrollY > 200 ? 'flex' : 'none';
+});
+
+backToTop.addEventListener('click', () => {
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+});
+
+// Transición de pestañas con fade
+tabButtons.forEach(button => {
+  button.addEventListener('click', () => {
+    tabContents.forEach(content => content.classList.remove('active'));
+    const target = document.getElementById(button.dataset.tab);
+    setTimeout(() => target.classList.add('active'), 50);
+  });
+});
+
+// Versus card animado
+const versusCard = document.createElement('div');
+versusCard.id = 'versus-card';
+document.body.appendChild(versusCard);
+
+const oldUpdateComparisonDeluxe = updateComparison;
+updateComparison = function() {
+  oldUpdateComparisonDeluxe();
+
+  versusCard.style.display = 'none';
+  versusCard.innerHTML = '';
+
+  if (selectedRows.length === 2) {
+    const [row1, row2] = selectedRows;
+    const name1 = row1.querySelector('span').textContent;
+    const name2 = row2.querySelector('span').textContent;
+    const img1 = row1.querySelector('img').src;
+    const img2 = row2.querySelector('img').src;
+
+    versusCard.innerHTML = `
+      <img src="${img1}" alt="${name1}">
+      <span>${name1}</span>
+      <span class="text-red-400 text-2xl mx-2">VS</span>
+      <span>${name2}</span>
+      <img src="${img2}" alt="${name2}">
+    `;
+    versusCard.style.display = 'flex';
+  }
+};
+
+
+
+
+// Forzar pestaña "Reglas y Comodines" activa al cargar
+document.addEventListener('DOMContentLoaded', () => {
+  const defaultTab = document.querySelector('[data-tab="reglas"]');
+  const defaultContent = document.getElementById('reglas');
+  if (defaultTab && defaultContent) {
+    defaultContent.classList.add('active');
+    // defaultTab.classList.add('bg-indigo-700');
+  }
+});
+
+
+// --- Versus card mejorado con puntuaciones y animación de golpe ---
+const oldUpdateComparisonPower = updateComparison;
+updateComparison = function() {
+  oldUpdateComparisonPower();
+
+  versusCard.style.display = 'none';
+  versusCard.innerHTML = '';
+  const existingDiff = document.getElementById('versus-diff');
+  if (existingDiff) existingDiff.remove();
+
+  if (selectedRows.length === 2) {
+    const [row1, row2] = selectedRows;
+    const name1 = row1.querySelector('span').textContent;
+    const name2 = row2.querySelector('span').textContent;
+    const img1 = row1.querySelector('img').src;
+    const img2 = row2.querySelector('img').src;
+    const score1 = parseInt(row1.dataset.score);
+    const score2 = parseInt(row2.dataset.score);
+    const diff = Math.abs(score1 - score2);
+
+    let winner, loser;
+    if (score1 > score2) { winner = 1; } 
+    else if (score2 > score1) { winner = 2; }
+    else { winner = 0; }
+
+    versusCard.innerHTML = `
+      <div class="player ${winner === 1 ? 'text-green-400' : (winner === 2 ? 'text-red-400' : '')}" id="p1">
+        <img src="${img1}" alt="${name1}">
+        <span>${name1}</span>
+        <span class="score">${score1}</span>
+      </div>
+      <span class="text-yellow-400 text-2xl mx-4">⚡ VS ⚡</span>
+      <div class="player ${winner === 2 ? 'text-green-400' : (winner === 1 ? 'text-red-400' : '')}" id="p2">
+        <span class="score">${score2}</span>
+        <span>${name2}</span>
+        <img src="${img2}" alt="${name2}">
+      </div>
+    `;
+    versusCard.style.display = 'flex';
+
+    const diffMsg = document.createElement('div');
+    diffMsg.id = 'versus-diff';
+    diffMsg.textContent = `💥 Diferencia de puntos: ${diff}`;
+    versusCard.insertAdjacentElement('afterend', diffMsg);
+
+    // Animaciones de "golpe"
+    const p1 = document.getElementById('p1');
+    const p2 = document.getElementById('p2');
+    if (winner === 1) {
+      p1.style.animation = 'pushForward 0.5s ease forwards';
+      p2.style.animation = 'pushBack 0.5s ease forwards';
+    } else if (winner === 2) {
+      p2.style.animation = 'pushForward 0.5s ease forwards';
+      p1.style.animation = 'pushBack 0.5s ease forwards';
+    }
+  }
+};
+
+
+// --- Versus card versión definitiva con animaciones y estructura visual ---
+const oldUpdateComparisonFinal = updateComparison;
+updateComparison = function() {
+  oldUpdateComparisonFinal();
+
+  versusCard.style.display = 'none';
+  versusCard.innerHTML = '';
+  const existingDiff = document.getElementById('versus-diff');
+  if (existingDiff) existingDiff.remove();
+
+  if (selectedRows.length === 2) {
+    const [row1, row2] = selectedRows;
+    const name1 = row1.querySelector('span').textContent;
+    const name2 = row2.querySelector('span').textContent;
+    const img1 = row1.querySelector('img').src;
+    const img2 = row2.querySelector('img').src;
+    const score1 = parseInt(row1.dataset.score);
+    const score2 = parseInt(row2.dataset.score);
+    const diff = Math.abs(score1 - score2);
+
+    let winner = 0;
+    if (score1 > score2) winner = 1;
+    else if (score2 > score1) winner = 2;
+
+    const p1Color = winner === 1 ? 'text-green-400' : winner === 2 ? 'text-red-400' : 'text-gray-300';
+    const p2Color = winner === 2 ? 'text-green-400' : winner === 1 ? 'text-red-400' : 'text-gray-300';
+
+    versusCard.innerHTML = `
+      <div class="player ${p1Color}" id="p1">
+        <img src="${img1}" alt="${name1}">
+        <span class="name">${name1}</span>
+        <span class="score">${score1}</span>
+      </div>
+      <span class="vs-symbol">⚡ VS ⚡</span>
+      <div class="player ${p2Color}" id="p2">
+        <img src="${img2}" alt="${name2}">
+        <span class="name">${name2}</span>
+        <span class="score">${score2}</span>
+      </div>
+    `;
+    versusCard.style.display = 'flex';
+
+    const diffMsg = document.createElement('div');
+    diffMsg.id = 'versus-diff';
+    diffMsg.textContent = `💥 Diferencia de puntos: ${diff}`;
+    versusCard.insertAdjacentElement('afterend', diffMsg);
+
+    // Animaciones de impacto
+    const p1 = document.getElementById('p1');
+    const p2 = document.getElementById('p2');
+    const vsSymbol = versusCard.querySelector('.vs-symbol');
+
+    if (winner === 1) {
+      p1.style.animation = 'pushForwardSmooth 0.6s ease forwards';
+      p2.style.animation = 'pushBackShake 0.6s ease forwards';
+    } else if (winner === 2) {
+      p2.style.animation = 'pushForwardSmooth 0.6s ease forwards';
+      p1.style.animation = 'pushBackShake 0.6s ease forwards';
+    }
+
+    vsSymbol.style.animation = 'vsImpact 0.6s ease';
+  }
+};
+
+
+// --- Ajuste: diferencia centrada debajo del VS ---
+const oldUpdateComparisonCentered = updateComparison;
+updateComparison = function() {
+  oldUpdateComparisonCentered();
+
+  versusCard.style.display = 'none';
+  versusCard.innerHTML = '';
+  const existingDiff = document.getElementById('versus-diff');
+  if (existingDiff) existingDiff.remove();
+
+  if (selectedRows.length === 2) {
+    const [row1, row2] = selectedRows;
+    const name1 = row1.querySelector('span').textContent;
+    const name2 = row2.querySelector('span').textContent;
+    const img1 = row1.querySelector('img').src;
+    const img2 = row2.querySelector('img').src;
+    const score1 = parseInt(row1.dataset.score);
+    const score2 = parseInt(row2.dataset.score);
+    const diff = Math.abs(score1 - score2);
+
+    let winner = 0;
+    if (score1 > score2) winner = 1;
+    else if (score2 > score1) winner = 2;
+
+    const p1Color = winner === 1 ? 'text-green-400' : winner === 2 ? 'text-red-400' : 'text-gray-300';
+    const p2Color = winner === 2 ? 'text-green-400' : winner === 1 ? 'text-red-400' : 'text-gray-300';
+
+    versusCard.innerHTML = `
+      <div class="player ${p1Color}" id="p1">
+        <img src="${img1}" alt="${name1}">
+        <span class="name">${name1}</span>
+        <span class="score">${score1}</span>
+      </div>
+      <div class="vs-container text-center">
+        <span class="vs-symbol">⚡ VS ⚡</span>
+        <div class="diff-center">💥 Diferencia: ${diff}</div>
+      </div>
+      <div class="player ${p2Color}" id="p2">
+        <img src="${img2}" alt="${name2}">
+        <span class="name">${name2}</span>
+        <span class="score">${score2}</span>
+      </div>
+    `;
+    versusCard.style.display = 'flex';
+
+    // Animaciones de impacto
+    const p1 = document.getElementById('p1');
+    const p2 = document.getElementById('p2');
+    const vsSymbol = versusCard.querySelector('.vs-symbol');
+
+    if (winner === 1) {
+      p1.style.animation = 'pushForwardSmooth 0.6s ease forwards';
+      p2.style.animation = 'pushBackShake 0.6s ease forwards';
+    } else if (winner === 2) {
+      p2.style.animation = 'pushForwardSmooth 0.6s ease forwards';
+      p1.style.animation = 'pushBackShake 0.6s ease forwards';
+    }
+
+    vsSymbol.style.animation = 'vsImpact 0.6s ease';
+  }
+};
+
+
+// --- OVERRIDE: Clean Versus Card Rendering (final) ---
+(function() {
+  // Add/override styles to ensure consistent appearance
+  const styleEl = document.createElement('style');
+  styleEl.innerHTML = `
+  /* Final versus styles - override previous conflicting rules */
+  #versus-card {
+  padding: 2rem 3rem 2.5rem 3rem;
+  min-width: 600px;
+  min-height: 220px;
+ position: fixed !important; top: 50% !important; left: 50% !important; transform: translate(-50%, -50%) !important; display: none; flex-direction: row; align-items: center; justify-content: center; gap: 2rem; padding: 1rem 2rem; border-radius: 1rem; background: rgba(17,24,39,0.95); border: 2px solid rgba(99,102,241,0.12); z-index: 9999; }
+  #versus-card .player { display:flex; flex-direction:column; align-items:center; min-width:130px; }
+  #versus-card .player img {
+  width: 85px;
+  height: 85px;
+ width:70px; height:70px; border-radius:50%; object-fit:cover; margin-bottom:6px; border:2px solid #818cf8; }
+  #versus-card .name { font-size:1rem; margin-bottom:4px; }
+  #versus-card .score { font-size:1.25rem; color:#facc15; font-weight:700; margin-top:6px; }
+  #versus-card .vs-container { position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  #versus-card .vs-symbol { font-size:1.8rem; color:#facc15; display:block; }
+  #versus-card .diff-center {
+  background: transparent !important;
+  text-shadow: none !important;
+ position:absolute; top:100%; left:50%; transform:translate(-50%,6px); color:#facc15; font-weight:700; padding:6px 10px; background: rgba(0,0,0,0.2); border-radius:8px; backdrop-filter: blur(6px); box-shadow:0 6px 18px rgba(0,0,0,0.5); opacity:0; animation: popUpDiff 0.45s ease forwards; }
+  @keyframes popUpDiff { 0% { transform: translate(-50%,12px) scale(0.9); opacity:0 } 60% { transform: translate(-50%, -6px) scale(1.05); opacity:1 } 100% { transform: translate(-50%,6px) scale(1); opacity:1 } }
+  @keyframes pushForwardSmooth { 0% { transform: translateX(0) scale(1); } 40% { transform: translateX(18px) scale(1.08); } 100% { transform: translateX(12px) scale(1.03); } }
+  @keyframes pushBackSmooth { 0% { transform: translateX(0) scale(1); opacity:1; } 100% { transform: translateX(-8px) scale(0.96); opacity:0.85; } }
+  .winner-anim { animation: pushForwardSmooth 0.55s cubic-bezier(.2,.9,.3,1) forwards; }
+  .loser-anim { animation: pushBackSmooth 0.55s cubic-bezier(.2,.9,.3,1) forwards; }
+  `;
+  document.head.appendChild(styleEl);
+
+  // Ensure versusCard exists
+  let versusCard = document.getElementById('versus-card');
+  if (!versusCard) {
+    versusCard = document.createElement('div');
+    versusCard.id = 'versus-card';
+    document.body.appendChild(versusCard);
+  }
+
+  // Replace global updateComparison with a clean version
+  window.updateComparison = function() {
+    // first, clear any old elements created by previous versions
+    const oldDiffs = document.querySelectorAll('#versus-diff, .diff-center, .diff-center-old');
+    oldDiffs.forEach(e => e.remove());
+
+    // reset versus card
+    versusCard.style.display = 'none';
+    versusCard.innerHTML = '';
+
+    // clear previous animations on players
+    document.querySelectorAll('#versus-card .player').forEach(p => { p.classList.remove('winner-anim','loser-anim'); });
+
+    if (Array.isArray(selectedRows) && selectedRows.length === 2) {
+      const [row1,row2] = selectedRows;
+      const name1 = row1.querySelector('td:nth-child(2) span') ? row1.querySelector('td:nth-child(2) span').textContent : (row1.querySelector('span')?row1.querySelector('span').textContent : row1.textContent.trim());
+      const name2 = row2.querySelector('td:nth-child(2) span') ? row2.querySelector('td:nth-child(2) span').textContent : (row2.querySelector('span')?row2.querySelector('span').textContent : row2.textContent.trim());
+      const img1 = row1.querySelector('img') ? row1.querySelector('img').src : 'https://placehold.co/64x64/374151/ffffff?text=U';
+      const img2 = row2.querySelector('img') ? row2.querySelector('img').src : 'https://placehold.co/64x64/374151/ffffff?text=U';
+      const score1 = parseInt(row1.dataset.score) || 0;
+      const score2 = parseInt(row2.dataset.score) || 0;
+      const diff = Math.abs(score1-score2);
+
+      let winner = 0;
+      if (score1 > score2) winner = 1;
+      else if (score2 > score1) winner = 2;
+
+      // Build HTML
+      versusCard.innerHTML = `
+        <div class="player" id="p1">
+          <img src="${img1}" alt="${name1}"/>
+          <span class="name" id="name1">${name1}</span>
+          <span class="score" id="score1">${score1}</span>
+        </div>
+        <div class="vs-container">
+          <span class="vs-symbol">⚡ VS ⚡</span>
+          <div class="diff-center" id="diff-center">💥 Diferencia: ${diff}</div>
+        </div>
+        <div class="player" id="p2">
+          <img src="${img2}" alt="${name2}"/>
+          <span class="name" id="name2">${name2}</span>
+          <span class="score" id="score2">${score2}</span>
+        </div>
+      `;
+
+      // color winners/losers
+      const p1 = document.getElementById('p1');
+      const p2 = document.getElementById('p2');
+      const nameEl1 = document.getElementById('name1');
+      const nameEl2 = document.getElementById('name2');
+      const scoreEl1 = document.getElementById('score1');
+      const scoreEl2 = document.getElementById('score2');
+
+      if (winner === 1) {
+        nameEl1.classList.add('text-green-400'); scoreEl1.classList.add('text-green-400'); p1.classList.add('winner-anim');
+        nameEl2.classList.add('text-red-400'); scoreEl2.classList.add('text-red-400'); p2.classList.add('loser-anim');
+      } else if (winner === 2) {
+        nameEl2.classList.add('text-green-400'); scoreEl2.classList.add('text-green-400'); p2.classList.add('winner-anim');
+        nameEl1.classList.add('text-red-400'); scoreEl1.classList.add('text-red-400'); p1.classList.add('loser-anim');
+      } else {
+        // tie: neutral colors
+        nameEl1.classList.add('text-gray-200'); nameEl2.classList.add('text-gray-200');
+      }
+
+      versusCard.style.display = 'flex';
+
+      // remove animations after they finish so subsequent opens run again
+      setTimeout(()=>{
+        p1.classList.remove('winner-anim','loser-anim');
+        p2.classList.remove('winner-anim','loser-anim');
+      }, 900);
+    } else {
+      // no two selected -> hide versus card
+      versusCard.style.display = 'none';
+    }
+  };
+})(); 
+
+</script>
     <!-- Fuentes personalizadas -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -122,7 +553,358 @@
             margin-right: 12px;
             border: 2px solid #6366f1; /* Borde índigo */
         }
-    </style>
+    
+/* Aumenta ligeramente el espacio vertical de las tablas de clasificación */
+#clasificacion table {
+  min-height: 400px;
+}
+#clasificacion section {
+  padding-bottom: 1.5rem;
+}
+
+
+/* Evita que el zoom de las filas afecte al tamaño real de la tabla */
+#clasificacion section {
+  overflow: hidden;
+}
+.focused {
+  box-shadow: 0 0 25px rgba(99,102,241,0.6);
+  background-color: rgba(99,102,241,0.3);
+  position: relative;
+  z-index: 10;
+
+  transform-origin: center center;
+  will-change: transform;
+}
+
+
+/* --- Animación de flotación sutil para comodines seleccionados --- */
+@keyframes float {
+  0% { transform: translateY(0px); box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3); }
+  50% { transform: translateY(-5px); box-shadow: 0 10px 15px rgba(0, 0, 0, 0.4); }
+  100% { transform: translateY(0px); box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3); }
+}
+
+.card.selected-favor,
+.card.selected-contra {
+  animation: float 3s ease-in-out infinite;
+}
+
+
+/* --- ASTUPORRA DELUXE --- */
+
+/* 1. Animación de entrada y hover para comodines */
+@keyframes fadeUp {
+  0% { opacity: 0; transform: translateY(10px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.card {
+  animation: fadeUp 0.5s ease both;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 20px rgba(99, 102, 241, 0.3);
+}
+
+
+
+/* 3. Medallas en el top 3 */
+#clasificacion-div1 tr:nth-child(1) td:first-child::after,
+#clasificacion-div2 tr:nth-child(1) td:first-child::after {
+  content: "🥇";
+  margin-left: 8px;
+}
+#clasificacion-div1 tr:nth-child(2) td:first-child::after,
+#clasificacion-div2 tr:nth-child(2) td:first-child::after {
+  content: "🥈";
+  margin-left: 8px;
+}
+#clasificacion-div1 tr:nth-child(3) td:first-child::after,
+#clasificacion-div2 tr:nth-child(3) td:first-child::after {
+  content: "🥉";
+  margin-left: 8px;
+}
+
+/* 4. Fade en cambio de pestañas */
+.tab-content {
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+.tab-content.active {
+  opacity: 1;
+}
+
+/* 5. Botón “Volver arriba” */
+#back-to-top {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  background-color: #4f46e5;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 45px;
+  height: 45px;
+  font-size: 1.5rem;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+  cursor: pointer;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+  z-index: 100;
+}
+#back-to-top:hover {
+  transform: translateY(-4px);
+}
+
+/* 6. Versus card animado */
+#versus-card {
+  padding: 2rem 3rem 2.5rem 3rem;
+  min-width: 600px;
+  min-height: 220px;
+
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.9);
+  background: rgba(31,41,55,0.95);
+  border: 2px solid #6366f1;
+  border-radius: 1rem;
+  padding: 1rem 2rem;
+  display: none;
+  align-items: center;
+  gap: 1rem;
+  color: white;
+  font-weight: bold;
+  box-shadow: 0 0 20px rgba(99,102,241,0.6);
+  animation: fadeUp 0.5s ease forwards;
+  z-index: 100;
+}
+#versus-card img {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #818cf8;
+}
+
+
+/* --- Scroll estilo neón elegante --- */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(31, 31, 31, 0.8);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #6366f1 0%, #4f46e5 100%);
+  border-radius: 10px;
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
+  transition: background 0.3s ease, box-shadow 0.3s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #818cf8 0%, #6366f1 100%);
+  box-shadow: 0 0 15px rgba(129, 140, 248, 0.7);
+}
+
+
+/* --- Versus mejorado con puntuaciones y animaciones --- */
+@keyframes popUpDiff {
+  0% { transform: scale(0.7); opacity: 0; }
+  60% { transform: scale(1.05); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes pushForward {
+  0% { transform: scale(1) translateY(0); }
+  50% { transform: scale(1.1) translateY(-3px); }
+  100% { transform: scale(1.05) translateY(-2px); }
+}
+@keyframes pushBack {
+  0% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(0.95); opacity: 0.8; }
+}
+#versus-card {
+  padding: 2rem 3rem 2.5rem 3rem;
+  min-width: 600px;
+  min-height: 220px;
+
+  flex-direction: row;
+  justify-content: center;
+  text-align: center;
+}
+#versus-card .player {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: bold;
+}
+#versus-card .player img {
+  width: 85px;
+  height: 85px;
+
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  border: 2px solid #818cf8;
+  object-fit: cover;
+}
+#versus-card .score {
+  font-size: 1.25rem;
+}
+
+#versus-card {
+  padding: 2rem 3rem 2.5rem 3rem;
+  min-width: 600px;
+  min-height: 220px;
+
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+  padding: 1rem 2rem 2rem 2rem;
+  border-radius: 1rem;
+}
+
+#versus-card .diff-center {
+  background: transparent !important;
+  text-shadow: none !important;
+
+  position: absolute;
+  bottom: 0.4rem;
+  left: 50%;
+  transform: translateX(-50%);
+  font-weight: bold;
+  color: #facc15;
+  animation: popUpDiff 0.5s ease forwards;
+  font-size: 1rem;
+}
+
+#versus-diff {
+  text-align: center;
+  margin-top: 0.5rem;
+  font-weight: bold;
+  color: #facc15;
+  animation: popUpDiff 0.5s ease forwards;
+}
+
+
+/* --- Versus card con estructura de columnas y animación de impacto --- */
+@keyframes pushForwardSmooth {
+  0% { transform: translateX(0) scale(1); }
+  40% { transform: translateX(15px) scale(1.1); }
+  100% { transform: translateX(10px) scale(1.05); }
+}
+@keyframes pushBackShake {
+  0% { transform: translateX(0) scale(1); }
+  25% { transform: translateX(-10px) rotate(-2deg); }
+  50% { transform: translateX(5px) rotate(2deg); }
+  75% { transform: translateX(-3px) rotate(-1deg); }
+  100% { transform: translateX(-5px) scale(0.95); opacity: 0.9; }
+}
+@keyframes vsImpact {
+  0% { transform: scale(1); color: #facc15; }
+  50% { transform: scale(1.3); color: #fbbf24; }
+  100% { transform: scale(1); color: #facc15; }
+}
+
+#versus-card {
+  padding: 2rem 3rem 2.5rem 3rem;
+  min-width: 600px;
+  min-height: 220px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+  padding: 1rem 2rem;
+  border-radius: 1rem;
+}
+
+#versus-card .player {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  font-weight: bold;
+  min-width: 120px;
+}
+
+#versus-card .player img {
+  width: 85px;
+  height: 85px;
+
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  border: 2px solid #818cf8;
+  object-fit: cover;
+  margin-bottom: 0.5rem;
+}
+
+#versus-card .name {
+  font-size: 1rem;
+  margin-bottom: 0.3rem;
+}
+
+#versus-card .score {
+  font-size: 1.25rem;
+  color: #facc15;
+}
+
+#versus-card .vs-symbol {
+  font-size: 2rem;
+  color: #facc15;
+  animation: vsImpact 0.6s ease;
+}
+
+
+#versus-card {
+  padding: 2rem 3rem 2.5rem 3rem;
+  min-width: 600px;
+  min-height: 220px;
+
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+  padding: 1rem 2rem 2rem 2rem;
+  border-radius: 1rem;
+}
+
+#versus-card .diff-center {
+  background: transparent !important;
+  text-shadow: none !important;
+
+  position: absolute;
+  bottom: 0.4rem;
+  left: 50%;
+  transform: translateX(-50%);
+  font-weight: bold;
+  color: #facc15;
+  animation: popUpDiff 0.5s ease forwards;
+  font-size: 1rem;
+}
+
+#versus-diff {
+  text-align: center;
+  margin-top: 0.5rem;
+  font-weight: bold;
+  color: #facc15;
+  animation: popUpDiff 0.5s ease forwards;
+}
+
+</style>
 </head>
 <body class="min-h-screen">
     <!-- Contenedor principal centrado -->
@@ -910,8 +1692,525 @@
             // Lógica para establecer el estado inicial de los botones de tipo
             document.querySelector('[data-filter-type="all"]').classList.add('active');
             
+            addRowClickListeners();
+});
+
+// --- Lógica de comparación con efecto POP-UP ---
+let selectedRows = [];
+
+// Creamos un estilo personalizado para la animación pop-up
+const style = document.createElement("style");
+style.innerHTML = `
+@keyframes popUp {
+  0% { transform: scale(0.7); opacity: 0; }
+  60% { transform: scale(1.1); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.pop-up {
+  animation: popUp 0.4s ease-out forwards;
+}
+`;
+document.head.appendChild(style);
+
+// Función que muestra la diferencia con el efecto pop-up
+function updateComparison() {
+    // Eliminar mensaje previo
+    const existingDiff = document.getElementById('score-diff');
+    if (existingDiff) existingDiff.remove();
+
+    if (selectedRows.length === 2) {
+        const [row1, row2] = selectedRows;
+        const score1 = parseInt(row1.dataset.score);
+        const score2 = parseInt(row2.dataset.score);
+        const diff = Math.abs(score1 - score2);
+        const division = row1.closest('tbody').id;
+
+        // Crear contenedor del mensaje
+        const diffMsg = document.createElement('div');
+        diffMsg.id = 'score-diff';
+        diffMsg.className = `
+            text-center mt-4 text-xl font-extrabold text-yellow-300 
+            pop-up transform transition-all
+        `;
+        diffMsg.textContent = `⚡ Diferencia de puntos: ${diff}`;
+
+        // Insertar debajo de la tabla correspondiente
+        const tableSection = document.getElementById(division).closest('section');
+        tableSection.appendChild(diffMsg);
+    }
+}
+
+// Función para manejar clics en las filas
+function handleRowClick(event) {
+    const row = event.currentTarget;
+    const division = row.closest('tbody').id;
+
+    // Si ya está seleccionada → deseleccionarla
+    if (selectedRows.includes(row)) {
+        row.classList.remove('bg-indigo-700', 'shadow-lg', 'ring-2', 'ring-indigo-400');
+        selectedRows = selectedRows.filter(r => r !== row);
+        updateComparison();
+        return;
+    }
+
+    // Si ya hay dos seleccionadas o son de otra división → reiniciar selección
+    if (
+        selectedRows.length === 2 ||
+        (selectedRows.length === 1 && selectedRows[0].closest('tbody').id !== division)
+    ) {
+        selectedRows.forEach(r => r.classList.remove('bg-indigo-700', 'shadow-lg'));
+        selectedRows = [];
+    }
+
+    // Agregar nueva selección con efecto visual
+    row.classList.add('bg-indigo-700', 'shadow-lg', 'ring-2', 'ring-indigo-400', 'transition', 'duration-300');
+    selectedRows.push(row);
+
+    updateComparison();
+}
+
+// Asigna los listeners a las filas después de renderizar
+function addRowClickListeners() {
+    document.querySelectorAll('#clasificacion tbody tr').forEach(row => {
+        row.dataset.score = row.querySelector('td:last-child').textContent.trim();
+        row.style.cursor = 'pointer';
+        row.classList.add('transition', 'duration-200', 'hover:bg-indigo-600');
+        row.addEventListener('click', handleRowClick);
+    });
+}
+
+    
+// --- Efecto visual al seleccionar dos personas (zoom sutil y resto gris) ---
+
+// Añadimos los estilos necesarios para el efecto
+const styleFocus = document.createElement("style");
+styleFocus.innerHTML = `
+@keyframes focusPop {
+  0% { box-shadow: none; background-color: rgba(99,102,241,0.2); }
+  100% { box-shadow: 0 0 25px rgba(99,102,241,0.6); background-color: rgba(99,102,241,0.3); }
+}
+  0% { transform: scale(1); box-shadow: none; }
+  100% {  box-shadow: 0 0 20px rgba(99,102,241,0.5); }
+}
+.focused {
+  box-shadow: 0 0 25px rgba(99,102,241,0.6);
+  background-color: rgba(99,102,241,0.3);
+  position: relative;
+  z-index: 10;
+
+  animation: focusPop 0.3s ease-out forwards;
+  z-index: 10;
+  position: relative;
+}
+.dimmed {
+  opacity: 0.4;
+  filter: grayscale(100%);
+  transition: opacity 0.3s ease, filter 0.3s ease;
+}
+`;
+document.head.appendChild(styleFocus);
+
+// Sobrescribimos updateComparison para añadir el nuevo efecto visual
+const oldUpdateComparison = updateComparison;
+updateComparison = function() {
+    oldUpdateComparison();
+
+    // Limpiar cualquier estado anterior
+    document.querySelectorAll('#clasificacion tbody tr').forEach(r => {
+        r.classList.remove('focused', 'dimmed');
+    });
+
+    if (selectedRows.length === 2) {
+        const [row1, row2] = selectedRows;
+        const allRows = Array.from(row1.closest('tbody').querySelectorAll('tr'));
+
+        // Aplicar efecto visual
+        allRows.forEach(r => {
+            if (r !== row1 && r !== row2) {
+                r.classList.add('dimmed');
+            }
         });
-    </script>
+        row1.classList.add('focused');
+        row2.classList.add('focused');
+    }
+};
+
+
+// --- Funciones Deluxe ---
+
+// Botón "Volver arriba"
+const backToTop = document.createElement('button');
+backToTop.id = 'back-to-top';
+backToTop.innerHTML = '↑';
+document.body.appendChild(backToTop);
+
+window.addEventListener('scroll', () => {
+  backToTop.style.display = window.scrollY > 200 ? 'flex' : 'none';
+});
+
+backToTop.addEventListener('click', () => {
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+});
+
+// Transición de pestañas con fade
+tabButtons.forEach(button => {
+  button.addEventListener('click', () => {
+    tabContents.forEach(content => content.classList.remove('active'));
+    const target = document.getElementById(button.dataset.tab);
+    setTimeout(() => target.classList.add('active'), 50);
+  });
+});
+
+// Versus card animado
+const versusCard = document.createElement('div');
+versusCard.id = 'versus-card';
+document.body.appendChild(versusCard);
+
+const oldUpdateComparisonDeluxe = updateComparison;
+updateComparison = function() {
+  oldUpdateComparisonDeluxe();
+
+  versusCard.style.display = 'none';
+  versusCard.innerHTML = '';
+
+  if (selectedRows.length === 2) {
+    const [row1, row2] = selectedRows;
+    const name1 = row1.querySelector('span').textContent;
+    const name2 = row2.querySelector('span').textContent;
+    const img1 = row1.querySelector('img').src;
+    const img2 = row2.querySelector('img').src;
+
+    versusCard.innerHTML = `
+      <img src="${img1}" alt="${name1}">
+      <span>${name1}</span>
+      <span class="text-red-400 text-2xl mx-2">VS</span>
+      <span>${name2}</span>
+      <img src="${img2}" alt="${name2}">
+    `;
+    versusCard.style.display = 'flex';
+  }
+};
+
+
+
+
+// Forzar pestaña "Reglas y Comodines" activa al cargar
+document.addEventListener('DOMContentLoaded', () => {
+  const defaultTab = document.querySelector('[data-tab="reglas"]');
+  const defaultContent = document.getElementById('reglas');
+  if (defaultTab && defaultContent) {
+    defaultContent.classList.add('active');
+    // defaultTab.classList.add('bg-indigo-700');
+  }
+});
+
+
+// --- Versus card mejorado con puntuaciones y animación de golpe ---
+const oldUpdateComparisonPower = updateComparison;
+updateComparison = function() {
+  oldUpdateComparisonPower();
+
+  versusCard.style.display = 'none';
+  versusCard.innerHTML = '';
+  const existingDiff = document.getElementById('versus-diff');
+  if (existingDiff) existingDiff.remove();
+
+  if (selectedRows.length === 2) {
+    const [row1, row2] = selectedRows;
+    const name1 = row1.querySelector('span').textContent;
+    const name2 = row2.querySelector('span').textContent;
+    const img1 = row1.querySelector('img').src;
+    const img2 = row2.querySelector('img').src;
+    const score1 = parseInt(row1.dataset.score);
+    const score2 = parseInt(row2.dataset.score);
+    const diff = Math.abs(score1 - score2);
+
+    let winner, loser;
+    if (score1 > score2) { winner = 1; } 
+    else if (score2 > score1) { winner = 2; }
+    else { winner = 0; }
+
+    versusCard.innerHTML = `
+      <div class="player ${winner === 1 ? 'text-green-400' : (winner === 2 ? 'text-red-400' : '')}" id="p1">
+        <img src="${img1}" alt="${name1}">
+        <span>${name1}</span>
+        <span class="score">${score1}</span>
+      </div>
+      <span class="text-yellow-400 text-2xl mx-4">⚡ VS ⚡</span>
+      <div class="player ${winner === 2 ? 'text-green-400' : (winner === 1 ? 'text-red-400' : '')}" id="p2">
+        <span class="score">${score2}</span>
+        <span>${name2}</span>
+        <img src="${img2}" alt="${name2}">
+      </div>
+    `;
+    versusCard.style.display = 'flex';
+
+    const diffMsg = document.createElement('div');
+    diffMsg.id = 'versus-diff';
+    diffMsg.textContent = `💥 Diferencia de puntos: ${diff}`;
+    versusCard.insertAdjacentElement('afterend', diffMsg);
+
+    // Animaciones de "golpe"
+    const p1 = document.getElementById('p1');
+    const p2 = document.getElementById('p2');
+    if (winner === 1) {
+      p1.style.animation = 'pushForward 0.5s ease forwards';
+      p2.style.animation = 'pushBack 0.5s ease forwards';
+    } else if (winner === 2) {
+      p2.style.animation = 'pushForward 0.5s ease forwards';
+      p1.style.animation = 'pushBack 0.5s ease forwards';
+    }
+  }
+};
+
+
+// --- Versus card versión definitiva con animaciones y estructura visual ---
+const oldUpdateComparisonFinal = updateComparison;
+updateComparison = function() {
+  oldUpdateComparisonFinal();
+
+  versusCard.style.display = 'none';
+  versusCard.innerHTML = '';
+  const existingDiff = document.getElementById('versus-diff');
+  if (existingDiff) existingDiff.remove();
+
+  if (selectedRows.length === 2) {
+    const [row1, row2] = selectedRows;
+    const name1 = row1.querySelector('span').textContent;
+    const name2 = row2.querySelector('span').textContent;
+    const img1 = row1.querySelector('img').src;
+    const img2 = row2.querySelector('img').src;
+    const score1 = parseInt(row1.dataset.score);
+    const score2 = parseInt(row2.dataset.score);
+    const diff = Math.abs(score1 - score2);
+
+    let winner = 0;
+    if (score1 > score2) winner = 1;
+    else if (score2 > score1) winner = 2;
+
+    const p1Color = winner === 1 ? 'text-green-400' : winner === 2 ? 'text-red-400' : 'text-gray-300';
+    const p2Color = winner === 2 ? 'text-green-400' : winner === 1 ? 'text-red-400' : 'text-gray-300';
+
+    versusCard.innerHTML = `
+      <div class="player ${p1Color}" id="p1">
+        <img src="${img1}" alt="${name1}">
+        <span class="name">${name1}</span>
+        <span class="score">${score1}</span>
+      </div>
+      <span class="vs-symbol">⚡ VS ⚡</span>
+      <div class="player ${p2Color}" id="p2">
+        <img src="${img2}" alt="${name2}">
+        <span class="name">${name2}</span>
+        <span class="score">${score2}</span>
+      </div>
+    `;
+    versusCard.style.display = 'flex';
+
+    const diffMsg = document.createElement('div');
+    diffMsg.id = 'versus-diff';
+    diffMsg.textContent = `💥 Diferencia de puntos: ${diff}`;
+    versusCard.insertAdjacentElement('afterend', diffMsg);
+
+    // Animaciones de impacto
+    const p1 = document.getElementById('p1');
+    const p2 = document.getElementById('p2');
+    const vsSymbol = versusCard.querySelector('.vs-symbol');
+
+    if (winner === 1) {
+      p1.style.animation = 'pushForwardSmooth 0.6s ease forwards';
+      p2.style.animation = 'pushBackShake 0.6s ease forwards';
+    } else if (winner === 2) {
+      p2.style.animation = 'pushForwardSmooth 0.6s ease forwards';
+      p1.style.animation = 'pushBackShake 0.6s ease forwards';
+    }
+
+    vsSymbol.style.animation = 'vsImpact 0.6s ease';
+  }
+};
+
+
+// --- Ajuste: diferencia centrada debajo del VS ---
+const oldUpdateComparisonCentered = updateComparison;
+updateComparison = function() {
+  oldUpdateComparisonCentered();
+
+  versusCard.style.display = 'none';
+  versusCard.innerHTML = '';
+  const existingDiff = document.getElementById('versus-diff');
+  if (existingDiff) existingDiff.remove();
+
+  if (selectedRows.length === 2) {
+    const [row1, row2] = selectedRows;
+    const name1 = row1.querySelector('span').textContent;
+    const name2 = row2.querySelector('span').textContent;
+    const img1 = row1.querySelector('img').src;
+    const img2 = row2.querySelector('img').src;
+    const score1 = parseInt(row1.dataset.score);
+    const score2 = parseInt(row2.dataset.score);
+    const diff = Math.abs(score1 - score2);
+
+    let winner = 0;
+    if (score1 > score2) winner = 1;
+    else if (score2 > score1) winner = 2;
+
+    const p1Color = winner === 1 ? 'text-green-400' : winner === 2 ? 'text-red-400' : 'text-gray-300';
+    const p2Color = winner === 2 ? 'text-green-400' : winner === 1 ? 'text-red-400' : 'text-gray-300';
+
+    versusCard.innerHTML = `
+      <div class="player ${p1Color}" id="p1">
+        <img src="${img1}" alt="${name1}">
+        <span class="name">${name1}</span>
+        <span class="score">${score1}</span>
+      </div>
+      <div class="vs-container text-center">
+        <span class="vs-symbol">⚡ VS ⚡</span>
+        <div class="diff-center">💥 Diferencia: ${diff}</div>
+      </div>
+      <div class="player ${p2Color}" id="p2">
+        <img src="${img2}" alt="${name2}">
+        <span class="name">${name2}</span>
+        <span class="score">${score2}</span>
+      </div>
+    `;
+    versusCard.style.display = 'flex';
+
+    // Animaciones de impacto
+    const p1 = document.getElementById('p1');
+    const p2 = document.getElementById('p2');
+    const vsSymbol = versusCard.querySelector('.vs-symbol');
+
+    if (winner === 1) {
+      p1.style.animation = 'pushForwardSmooth 0.6s ease forwards';
+      p2.style.animation = 'pushBackShake 0.6s ease forwards';
+    } else if (winner === 2) {
+      p2.style.animation = 'pushForwardSmooth 0.6s ease forwards';
+      p1.style.animation = 'pushBackShake 0.6s ease forwards';
+    }
+
+    vsSymbol.style.animation = 'vsImpact 0.6s ease';
+  }
+};
+
+
+// --- OVERRIDE: Clean Versus Card Rendering (final) ---
+(function() {
+  // Add/override styles to ensure consistent appearance
+  const styleEl = document.createElement('style');
+  styleEl.innerHTML = `
+  /* Final versus styles - override previous conflicting rules */
+  #versus-card {
+  padding: 2rem 3rem 2.5rem 3rem;
+  min-width: 600px;
+  min-height: 220px;
+ position: fixed !important; top: 50% !important; left: 50% !important; transform: translate(-50%, -50%) !important; display: none; flex-direction: row; align-items: center; justify-content: center; gap: 2rem; padding: 1rem 2rem; border-radius: 1rem; background: rgba(17,24,39,0.95); border: 2px solid rgba(99,102,241,0.12); z-index: 9999; }
+  #versus-card .player { display:flex; flex-direction:column; align-items:center; min-width:130px; }
+  #versus-card .player img {
+  width: 85px;
+  height: 85px;
+ width:70px; height:70px; border-radius:50%; object-fit:cover; margin-bottom:6px; border:2px solid #818cf8; }
+  #versus-card .name { font-size:1rem; margin-bottom:4px; }
+  #versus-card .score { font-size:1.25rem; color:#facc15; font-weight:700; margin-top:6px; }
+  #versus-card .vs-container { position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  #versus-card .vs-symbol { font-size:1.8rem; color:#facc15; display:block; }
+  #versus-card .diff-center {
+  background: transparent !important;
+  text-shadow: none !important;
+ position:absolute; top:100%; left:50%; transform:translate(-50%,6px); color:#facc15; font-weight:700; padding:6px 10px; background: rgba(0,0,0,0.2); border-radius:8px; backdrop-filter: blur(6px); box-shadow:0 6px 18px rgba(0,0,0,0.5); opacity:0; animation: popUpDiff 0.45s ease forwards; }
+  @keyframes popUpDiff { 0% { transform: translate(-50%,12px) scale(0.9); opacity:0 } 60% { transform: translate(-50%, -6px) scale(1.05); opacity:1 } 100% { transform: translate(-50%,6px) scale(1); opacity:1 } }
+  @keyframes pushForwardSmooth { 0% { transform: translateX(0) scale(1); } 40% { transform: translateX(18px) scale(1.08); } 100% { transform: translateX(12px) scale(1.03); } }
+  @keyframes pushBackSmooth { 0% { transform: translateX(0) scale(1); opacity:1; } 100% { transform: translateX(-8px) scale(0.96); opacity:0.85; } }
+  .winner-anim { animation: pushForwardSmooth 0.55s cubic-bezier(.2,.9,.3,1) forwards; }
+  .loser-anim { animation: pushBackSmooth 0.55s cubic-bezier(.2,.9,.3,1) forwards; }
+  `;
+  document.head.appendChild(styleEl);
+
+  // Ensure versusCard exists
+  let versusCard = document.getElementById('versus-card');
+  if (!versusCard) {
+    versusCard = document.createElement('div');
+    versusCard.id = 'versus-card';
+    document.body.appendChild(versusCard);
+  }
+
+  // Replace global updateComparison with a clean version
+  window.updateComparison = function() {
+    // first, clear any old elements created by previous versions
+    const oldDiffs = document.querySelectorAll('#versus-diff, .diff-center, .diff-center-old');
+    oldDiffs.forEach(e => e.remove());
+
+    // reset versus card
+    versusCard.style.display = 'none';
+    versusCard.innerHTML = '';
+
+    // clear previous animations on players
+    document.querySelectorAll('#versus-card .player').forEach(p => { p.classList.remove('winner-anim','loser-anim'); });
+
+    if (Array.isArray(selectedRows) && selectedRows.length === 2) {
+      const [row1,row2] = selectedRows;
+      const name1 = row1.querySelector('td:nth-child(2) span') ? row1.querySelector('td:nth-child(2) span').textContent : (row1.querySelector('span')?row1.querySelector('span').textContent : row1.textContent.trim());
+      const name2 = row2.querySelector('td:nth-child(2) span') ? row2.querySelector('td:nth-child(2) span').textContent : (row2.querySelector('span')?row2.querySelector('span').textContent : row2.textContent.trim());
+      const img1 = row1.querySelector('img') ? row1.querySelector('img').src : 'https://placehold.co/64x64/374151/ffffff?text=U';
+      const img2 = row2.querySelector('img') ? row2.querySelector('img').src : 'https://placehold.co/64x64/374151/ffffff?text=U';
+      const score1 = parseInt(row1.dataset.score) || 0;
+      const score2 = parseInt(row2.dataset.score) || 0;
+      const diff = Math.abs(score1-score2);
+
+      let winner = 0;
+      if (score1 > score2) winner = 1;
+      else if (score2 > score1) winner = 2;
+
+      // Build HTML
+      versusCard.innerHTML = `
+        <div class="player" id="p1">
+          <img src="${img1}" alt="${name1}"/>
+          <span class="name" id="name1">${name1}</span>
+          <span class="score" id="score1">${score1}</span>
+        </div>
+        <div class="vs-container">
+          <span class="vs-symbol">⚡ VS ⚡</span>
+          <div class="diff-center" id="diff-center">💥 Diferencia: ${diff}</div>
+        </div>
+        <div class="player" id="p2">
+          <img src="${img2}" alt="${name2}"/>
+          <span class="name" id="name2">${name2}</span>
+          <span class="score" id="score2">${score2}</span>
+        </div>
+      `;
+
+      // color winners/losers
+      const p1 = document.getElementById('p1');
+      const p2 = document.getElementById('p2');
+      const nameEl1 = document.getElementById('name1');
+      const nameEl2 = document.getElementById('name2');
+      const scoreEl1 = document.getElementById('score1');
+      const scoreEl2 = document.getElementById('score2');
+
+      if (winner === 1) {
+        nameEl1.classList.add('text-green-400'); scoreEl1.classList.add('text-green-400'); p1.classList.add('winner-anim');
+        nameEl2.classList.add('text-red-400'); scoreEl2.classList.add('text-red-400'); p2.classList.add('loser-anim');
+      } else if (winner === 2) {
+        nameEl2.classList.add('text-green-400'); scoreEl2.classList.add('text-green-400'); p2.classList.add('winner-anim');
+        nameEl1.classList.add('text-red-400'); scoreEl1.classList.add('text-red-400'); p1.classList.add('loser-anim');
+      } else {
+        // tie: neutral colors
+        nameEl1.classList.add('text-gray-200'); nameEl2.classList.add('text-gray-200');
+      }
+
+      versusCard.style.display = 'flex';
+
+      // remove animations after they finish so subsequent opens run again
+      setTimeout(()=>{
+        p1.classList.remove('winner-anim','loser-anim');
+        p2.classList.remove('winner-anim','loser-anim');
+      }, 900);
+    } else {
+      // no two selected -> hide versus card
+      versusCard.style.display = 'none';
+    }
+  };
+})(); 
+
+</script>
 </body>
 </html>
 
